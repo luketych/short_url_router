@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 const config = require('./config');
 const db = require('./db');
 const ShortIoProvider = require('./services/urlShortener/shortIoProvider');
@@ -48,6 +49,54 @@ const urlShortener = new ShortIoProvider(
   config.shortIo.apiKey,
   config.shortIo.domain
 );
+
+// Test Short.io credentials
+async function testShortIoCredentials() {
+  try {
+    console.log('Testing Short.io API credentials...');
+    
+    // Validate API key format
+    if (!config.shortIo.apiKey || !config.shortIo.apiKey.startsWith('sk_')) {
+      console.error('❌ ERROR: Invalid Short.io API key format. API keys should start with "sk_"');
+    }
+    
+    // Validate domain format
+    const hostnameRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    if (!config.shortIo.domain || !hostnameRegex.test(config.shortIo.domain)) {
+      console.error('❌ ERROR: Invalid Short.io domain format. Domain should be a valid hostname (e.g., "example.com")');
+      console.error('   The error "body/domain must match format hostname" occurs when the domain is not properly formatted');
+    }
+    
+    // Make a test request to the Short.io API
+    await axios.get('https://api.short.io/api/links', {
+      headers: {
+        authorization: config.shortIo.apiKey
+      }
+    });
+    
+    console.log('✅ Short.io API credentials verified successfully');
+  } catch (err) {
+    console.error('❌ ERROR: Failed to connect to Short.io API');
+    
+    if (err.response) {
+      if (err.response.status === 401) {
+        console.error('   Authentication failed: Invalid API key');
+      } else if (err.response.status === 403) {
+        console.error('   Authorization failed: Insufficient permissions');
+      } else {
+        console.error(`   Status code: ${err.response.status}`);
+        console.error(`   Error message: ${JSON.stringify(err.response.data)}`);
+      }
+    } else if (err.request) {
+      console.error('   No response received from Short.io API. Check your internet connection.');
+    } else {
+      console.error(`   Error: ${err.message}`);
+    }
+    
+    console.error('\nPlease check your .env file and ensure SHORTIO_API_KEY and SHORTIO_DOMAIN are correct.');
+    console.error('You can find your API key in your Short.io dashboard at https://app.short.io/settings/developer');
+  }
+}
 
 // GET /:shortCode - Get original URL
 app.get('/:shortCode', async (req, res) => {
@@ -163,4 +212,9 @@ app.listen(config.port, () => {
   console.log(`- GET /:shortCode`);
   console.log(`- GET /health`);
   console.log('=================================');
+  
+  // Test Short.io credentials on startup
+  testShortIoCredentials().catch(err => {
+    console.error('Failed to test Short.io credentials:', err.message);
+  });
 });
