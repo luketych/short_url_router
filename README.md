@@ -130,8 +130,10 @@ Retrieves the original URL for a given short code.
 }
 ```
 
-### POST /shorten
+### POST /api/shorten
 Creates a new short URL.
+
+Note: URLs without a protocol (http:// or https://) will automatically have http:// prepended.
 
 **Request Body:**
 ```json
@@ -174,12 +176,20 @@ To implement a new URL shortening provider:
 1. Create a new class that implements the `UrlShortenerInterface`
 2. Update the provider instantiation in `server.js`
 
-## Error Handling
+## Error Handling & Logging
 
-- All endpoints include proper error handling
-- Database errors are logged and handled gracefully
-- API errors from Short.io are properly managed
+- All endpoints include proper error handling with detailed error messages
+- Comprehensive request logging including timestamps and request details
+- Database operations are logged for debugging
+- API errors from Short.io are properly managed and logged
+- Stack traces included in errors when NODE_ENV=development
 - Health check endpoint for monitoring service status
+
+Common Error Messages:
+- `URL is required`: Request body missing `url` field
+- `Invalid URL format`: The provided URL is not properly formatted
+- `Failed to save URL`: Database operation failed
+- `URL not found`: Short code doesn't exist in database
 
 ## Container Configuration
 
