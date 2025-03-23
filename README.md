@@ -12,6 +12,8 @@ A Node.js service that provides URL shortening functionality using Short.io's AP
 
 ## Local Setup
 
+### Installation
+
 1. Install dependencies:
 ```bash
 npm install
@@ -39,6 +41,20 @@ For development with auto-reload:
 ```bash
 npm run dev
 ```
+
+### Debugging
+
+VS Code launch configurations are provided for debugging:
+
+1. **Launch Server**: Start the server normally
+2. **Debug Server**: Launch with Node inspector attached
+3. **Launch with Nodemon**: Start with auto-reload for development
+4. **Initialize Database**: Run the database initialization script
+
+To use:
+1. Open the Debug view in VS Code (`Cmd+Shift+D` on macOS, `Ctrl+Shift+D` on Windows/Linux)
+2. Select a launch configuration from the dropdown
+3. Start debugging with F5 or the play button
 
 ## Docker Deployment
 
