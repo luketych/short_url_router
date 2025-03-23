@@ -59,6 +59,11 @@ app.post('/shorten', async (req, res) => {
   }
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err);
