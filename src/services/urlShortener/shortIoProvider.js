@@ -38,7 +38,21 @@ class ShortIoProvider extends UrlShortenerInterface {
         originalUrl: longUrl
       };
     } catch (err) {
-      throw new Error(`Failed to create short URL: ${err.message}`);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message;
+      let userMessage = 'Failed to create short URL';
+      
+      if (err.response?.status === 400) {
+        userMessage = 'Invalid URL or domain configuration';
+      } else if (err.response?.status === 401) {
+        userMessage = 'Invalid API key';
+      } else if (err.response?.status === 429) {
+        userMessage = 'Rate limit exceeded';
+      }
+
+      const error = new Error(`${userMessage}: ${errorMessage}`);
+      error.status = err.response?.status || 500;
+      error.details = err.response?.data;
+      throw error;
     }
   }
 

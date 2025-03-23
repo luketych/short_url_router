@@ -5,15 +5,29 @@ const ShortIoProvider = require('./services/urlShortener/shortIoProvider');
 
 const app = express();
 
+// Parse JSON bodies first
+app.use(express.json());
+
 // Middleware for logging requests
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log('Body:', req.body);
+  const timestamp = new Date().toISOString();
+  console.log(`\n=== Request: ${timestamp} ===`);
+  console.log(`${req.method} ${req.url}`);
+  if (Object.keys(req.body).length > 0) {
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+  }
+  
+  // Capture response logging
+  const originalSend = res.send;
+  res.send = function (data) {
+    console.log(`\n=== Response: ${timestamp} ===`);
+    console.log('Status:', res.statusCode);
+    console.log('Body:', typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+    return originalSend.apply(res, arguments);
+  };
+  
   next();
 });
-
-// Parse JSON bodies
-app.use(express.json());
 
 // Validate URL
 function isValidUrl(url) {
@@ -52,7 +66,7 @@ app.get('/:shortCode', async (req, res) => {
   }
 });
 
-// POST /shorten - Create short URL
+// POST /api/shorten - Create short URL
 app.post('/api/shorten', async (req, res) => {
   try {
     console.log('Received shorten request:', req.body);
@@ -78,17 +92,34 @@ app.post('/api/shorten', async (req, res) => {
     
     if (!saved) {
       console.error('Failed to save URL to database');
-      return res.status(500).json({ error: 'Failed to save URL' });
+      return res.status(500).json({ 
+        error: 'Database Error',
+        message: 'Failed to save URL mapping to database'
+      });
     }
 
-    res.json({
+    res.status(201).json({
       originalUrl: result.originalUrl,
       shortCode: result.shortCode,
       shortUrl: `https://${config.shortIo.domain}/${result.shortCode}`
     });
   } catch (err) {
-    console.error('Error creating short URL:', err);
-    res.status(500).json({ error: 'Failed to create short URL' });
+    console.error('Error in URL shortening:', {
+      error: err.message,
+      details: err.details || {},
+      stack: err.stack
+    });
+
+    const statusCode = err.status || 500;
+    const errorResponse = {
+      error: err.message,
+      ...(process.env.NODE_ENV === 'development' && { 
+        details: err.details,
+        stack: err.stack
+      })
+    };
+
+    res.status(statusCode).json(errorResponse);
   }
 });
 
@@ -105,12 +136,22 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
+  console.error('\n=== Unhandled Error ===');
+  console.error('Error:', err.message);
+  console.error('Stack:', err.stack);
+  console.error('Details:', err.details || {});
+  
+  const statusCode = err.status || 500;
+  const errorResponse = {
+    error: 'Internal Server Error',
     message: err.message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
+    ...(process.env.NODE_ENV === 'development' && {
+      details: err.details,
+      stack: err.stack
+    })
+  };
+
+  res.status(statusCode).json(errorResponse);
 });
 
 // Start server
